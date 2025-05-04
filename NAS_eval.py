@@ -12,6 +12,7 @@ parser.add_argument('--labels-file', type=str, required=True, help='Path to labe
 parser.add_argument('--base-dir', type=str, required=True, help='Base directory for dataset')
 parser.add_argument('--batch-size', type=int, default=32, help='Batch size')
 parser.add_argument('--save_path', type=str,default="/kaggle/working/", help='Path to save the model')
+parser.add_argument('--epochs', type=int, default=10, help='Number of epochs for training')
 args = parser.parse_args()
 
 BATCH_SIZE = args.batch_size
@@ -22,7 +23,8 @@ arch_path = save_path + '/model_saving/fire_nas_architecture.json'
 model_path = save_path + '/model_saving/fire_nas_model.pth'
 labels_file = args.labels_file  # e.g., 'Data/archive/Frame_Pair_Labels.txt'
 base_dir = args.base_dir       # e.g., 'Data/archive/'
-BATCH_SIZE = 32
+BATCH_SIZE = args.batch_size  # e.g., 32
+EPOCHS = args.epochs  # e.g., 1
 
 os.makedirs(save_path + '/model_saving', exist_ok=True)
 
@@ -49,7 +51,6 @@ device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 model = FlexibleFireCNN(best_architecture, num_classes=2).to(device)
 optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
 criterion = torch.nn.BCEWithLogitsLoss()
-EPOCHS = 10  # You can adjust
 
 for epoch in range(EPOCHS):
     model.train()
