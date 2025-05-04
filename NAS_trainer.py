@@ -13,7 +13,7 @@ parser.add_argument('--batch-size', type=int, default=32, help='Batch size')
 parser.add_argument('--pecs', type=int, default=3, help='Epochs for performance estimate')
 parser.add_argument('--iters', type=int, default=20, help='NAS iterations')
 parser.add_argument('--subset-fraction', type=float, default=0.2, help='Fraction of data for each NAS sample')
-parser.add_argument('save_path', type=str,default="/kaggle/working/", help='Path to save the model')
+parser.add_argument('--save_path', type=str,default="/kaggle/working/", help='Path to save the model')
 args = parser.parse_args()
 
 BATCH_SIZE = args.batch_size
