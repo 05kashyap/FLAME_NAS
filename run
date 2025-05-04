@@ -1,0 +1,226 @@
+{
+ "cells": [
+  {
+   "cell_type": "code",
+   "execution_count": 1,
+   "id": "9c80fd08",
+   "metadata": {
+    "_cell_guid": "b1076dfc-b9ad-4769-8c92-a6c4dae69d19",
+    "_uuid": "8f2839f25d086af736a60e9eeb907d3b93b6e0e5",
+    "execution": {
+     "iopub.execute_input": "2025-05-04T13:17:01.407976Z",
+     "iopub.status.busy": "2025-05-04T13:17:01.407750Z",
+     "iopub.status.idle": "2025-05-04T13:17:02.356141Z",
+     "shell.execute_reply": "2025-05-04T13:17:02.355158Z"
+    },
+    "papermill": {
+     "duration": 0.95272,
+     "end_time": "2025-05-04T13:17:02.357645",
+     "exception": false,
+     "start_time": "2025-05-04T13:17:01.404925",
+     "status": "completed"
+    },
+    "tags": []
+   },
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "Cloning into 'FLAME_NAS'...\r\n",
+      "remote: Enumerating objects: 39, done.\u001b[K\r\n",
+      "remote: Counting objects: 100% (39/39), done.\u001b[K\r\n",
+      "remote: Compressing objects: 100% (28/28), done.\u001b[K\r\n",
+      "remote: Total 39 (delta 13), reused 31 (delta 9), pack-reused 0 (from 0)\u001b[K\r\n",
+      "Receiving objects: 100% (39/39), 20.22 KiB | 6.74 MiB/s, done.\r\n",
+      "Resolving deltas: 100% (13/13), done.\r\n"
+     ]
+    }
+   ],
+   "source": [
+    "!git clone https://05kashyap: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@github.com/05kashyap/FLAME_NAS"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 2,
+   "id": "cdefe7bd",
+   "metadata": {
+    "execution": {
+     "iopub.execute_input": "2025-05-04T13:17:02.362490Z",
+     "iopub.status.busy": "2025-05-04T13:17:02.362213Z",
+     "iopub.status.idle": "2025-05-04T13:17:02.368269Z",
+     "shell.execute_reply": "2025-05-04T13:17:02.367486Z"
+    },
+    "papermill": {
+     "duration": 0.009824,
+     "end_time": "2025-05-04T13:17:02.369630",
+     "exception": false,
+     "start_time": "2025-05-04T13:17:02.359806",
+     "status": "completed"
+    },
+    "tags": []
+   },
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "/kaggle/working/FLAME_NAS\n"
+     ]
+    }
+   ],
+   "source": [
+    "cd /kaggle/working/FLAME_NAS"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 3,
+   "id": "04640831",
+   "metadata": {
+    "execution": {
+     "iopub.execute_input": "2025-05-04T13:17:02.373872Z",
+     "iopub.status.busy": "2025-05-04T13:17:02.373673Z",
+     "iopub.status.idle": "2025-05-04T13:28:25.436349Z",
+     "shell.execute_reply": "2025-05-04T13:28:25.435421Z"
+    },
+    "papermill": {
+     "duration": 683.066691,
+     "end_time": "2025-05-04T13:28:25.438128",
+     "exception": false,
+     "start_time": "2025-05-04T13:17:02.371437",
+     "status": "completed"
+    },
+    "tags": []
+   },
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "Starting NAS for fire detection...\r\n",
+      "NAS iterations:  20%|█████▍                     | 2/10 [11:13<44:53, 336.74s/it]\r\n",
+      "Traceback (most recent call last):\r\n",
+      "  File \"/kaggle/working/FLAME_NAS/NAS_trainer.py\", line 47, in <module>\r\n",
+      "    best_model, best_architecture = trainer.train(train_loader, num_iterations=NUM_ITERATIONS)\r\n",
+      "  File \"/kaggle/working/FLAME_NAS/NAS_utils/multi/trainer.py\", line 61, in train\r\n",
+      "    score = self.train_model(architecture, subset_loader)\r\n",
+      "  File \"/kaggle/working/FLAME_NAS/NAS_utils/multi/trainer.py\", line 38, in train_model\r\n",
+      "    loss.backward()\r\n",
+      "  File \"/usr/local/lib/python3.10/dist-packages/torch/_tensor.py\", line 521, in backward\r\n",
+      "    torch.autograd.backward(\r\n",
+      "  File \"/usr/local/lib/python3.10/dist-packages/torch/autograd/__init__.py\", line 289, in backward\r\n",
+      "    _engine_run_backward(\r\n",
+      "  File \"/usr/local/lib/python3.10/dist-packages/torch/autograd/graph.py\", line 769, in _engine_run_backward\r\n",
+      "    return Variable._execution_engine.run_backward(  # Calls into the C++ engine to run the backward pass\r\n",
+      "torch.OutOfMemoryError: CUDA out of memory. Tried to allocate 784.00 MiB. GPU 0 has a total capacity of 15.89 GiB of which 495.12 MiB is free. Process 6401 has 15.40 GiB memory in use. Of the allocated memory 15.04 GiB is allocated by PyTorch, and 65.63 MiB is reserved by PyTorch but unallocated. If reserved but unallocated memory is large try setting PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True to avoid fragmentation.  See documentation for Memory Management  (https://pytorch.org/docs/stable/notes/cuda.html#environment-variables)\r\n"
+     ]
+    }
+   ],
+   "source": [
+    "! python3 /kaggle/working/FLAME_NAS/NAS_trainer.py --batch-size 32 --pecs 6 --iters 10 --subset-fraction 0.1 --labels-file /kaggle/input/flame-2/Frame_Pair_Labels.txt --base-dir /kaggle/input/flame-2/ "
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 4,
+   "id": "42303708",
+   "metadata": {
+    "execution": {
+     "iopub.execute_input": "2025-05-04T13:28:25.444125Z",
+     "iopub.status.busy": "2025-05-04T13:28:25.443836Z",
+     "iopub.status.idle": "2025-05-04T13:28:30.235552Z",
+     "shell.execute_reply": "2025-05-04T13:28:30.234542Z"
+    },
+    "papermill": {
+     "duration": 4.796375,
+     "end_time": "2025-05-04T13:28:30.237211",
+     "exception": false,
+     "start_time": "2025-05-04T13:28:25.440836",
+     "status": "completed"
+    },
+    "tags": []
+   },
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "usage: NAS_eval.py [-h] --labels-file LABELS_FILE --base-dir BASE_DIR [--batch-size BATCH_SIZE]\r\n",
+      "                   [--save_path SAVE_PATH]\r\n",
+      "NAS_eval.py: error: unrecognized arguments: --epochs 10\r\n"
+     ]
+    }
+   ],
+   "source": [
+    "! python3 /kaggle/working/FLAME_NAS/NAS_eval.py --epochs 10 --batch-size 32 --labels-file /kaggle/input/flame-2/Frame_Pair_Labels.txt --base-dir /kaggle/input/flame-2/ "
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "id": "62b3aaec",
+   "metadata": {
+    "papermill": {
+     "duration": 0.002063,
+     "end_time": "2025-05-04T13:28:30.241994",
+     "exception": false,
+     "start_time": "2025-05-04T13:28:30.239931",
+     "status": "completed"
+    },
+    "tags": []
+   },
+   "outputs": [],
+   "source": []
+  }
+ ],
+ "metadata": {
+  "kaggle": {
+   "accelerator": "gpu",
+   "dataSources": [
+    {
+     "datasetId": 6764300,
+     "sourceId": 10888658,
+     "sourceType": "datasetVersion"
+    }
+   ],
+   "dockerImageVersionId": 30823,
+   "isGpuEnabled": true,
+   "isInternetEnabled": true,
+   "language": "python",
+   "sourceType": "notebook"
+  },
+  "kernelspec": {
+   "display_name": "Python 3",
+   "language": "python",
+   "name": "python3"
+  },
+  "language_info": {
+   "codemirror_mode": {
+    "name": "ipython",
+    "version": 3
+   },
+   "file_extension": ".py",
+   "mimetype": "text/x-python",
+   "name": "python",
+   "nbconvert_exporter": "python",
+   "pygments_lexer": "ipython3",
+   "version": "3.10.12"
+  },
+  "papermill": {
+   "default_parameters": {},
+   "duration": 691.345474,
+   "end_time": "2025-05-04T13:28:30.561219",
+   "environment_variables": {},
+   "exception": null,
+   "input_path": "__notebook__.ipynb",
+   "output_path": "__notebook__.ipynb",
+   "parameters": {},
+   "start_time": "2025-05-04T13:16:59.215745",
+   "version": "2.6.0"
+  }
+ },
+ "nbformat": 4,
+ "nbformat_minor": 5
+}
