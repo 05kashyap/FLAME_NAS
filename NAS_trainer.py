@@ -31,7 +31,7 @@ train_loader, val_loader, test_loader = get_fire_dataloaders(
     train_ratio=0.8,
     val_ratio=0.1
 )
-
+os.mkdir('model_saving', exist_ok=True)
 model_path = 'model_saving/fire_nas_model.pth'
 search_space = FireArchitectureSearchSpace()
 controller = FireArchitectureController(search_space)
