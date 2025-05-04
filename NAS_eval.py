@@ -1,140 +1,133 @@
 import os
+import json
+import torch
+import numpy as np
+import matplotlib.pyplot as plt
+from dataloading import get_fire_dataloaders
+from NAS_utils.multi.architecture import FlexibleFireCNN
 import argparse
 
-from dataloading import load_data_list_multi, load_data_list_single
-from utils import load_architecture_from_file
-from eval import  evaluate_and_visualize_single, svm_classifier_single, svm_classifier_multi
-
-from NAS_utils.multi.searchspace import MultiArchitectureSearchSpace
-from NAS_utils.multi.trainer import NASTrainer, train_best_architecture_multi
-from NAS_utils.multi.architecture import FlexibleMultiLabelCNN
-
-from NAS_utils.single.architecture import SingleLabelCNN
-from NAS_utils.single.searchspace import SingleArchitectureSearchSpace
-from NAS_utils.single.trainer import SingleLabelNASTrainer, train_best_architecture_single
-
-parser = argparse.ArgumentParser(description='Extensively train and evaluate NAS protein localization model')
-parser.add_argument('--mode', type=str, choices=['single', 'multi'],
-                   required=True, help='Training mode: single or multi')
-parser.add_argument('--batch-size', type=int, default=128,
-                        help='Batch size for training (default: 128)')
-parser.add_argument('--epochs', type=int, default=100,
-                    help='Number of epochs for training (default: 100)')
-parser.add_argument('--no-train', action='store_true', 
-                    help='Skip training phase')
-parser.add_argument('--no-eval', action='store_true',
-                    help='Skip evaluation phase')
-parser.add_argument('--pretrained', action='store_true',
-                    help='Use pretrained model')
-
+parser = argparse.ArgumentParser(description='Train fire detection model')
+parser.add_argument('--labels-file', type=str, required=True, help='Path to labels file')
+parser.add_argument('--base-dir', type=str, required=True, help='Base directory for dataset')
+parser.add_argument('--batch-size', type=int, default=32, help='Batch size')
+parser.add_argument('--save_path', type=str,default="/kaggle/working/", help='Path to save the model')
 args = parser.parse_args()
 
-MODE = args.mode
 BATCH_SIZE = args.batch_size
-EPOCHS = args.epochs
-TRAIN = not args.no_train
-EVAL =  not args.no_eval
-PRETRAINED = args.pretrained
 
-# # Define the best architecture found by NAS
-# best_architecture = {
-#     'base_architecture': 'seresnet50',  # TODO: replace with best found architecture from NAS
-#     'num_layers': 6,
-#     'num_filters': [512, 1024, 2048, 1024, 512, 256],
-#     'filter_sizes': [3, 3, 3, 3, 3, 3],
-#     'fc_size': 1024,
-#     'reduction_ratio': 8,
-#     'vgg_config': 'D' 
-# }
-model_dir = './model_saving'
+# Paths (edit as needed)
+save_path = args.save_path
+arch_path = save_path + '/model_saving/fire_nas_architecture.json'
+model_path = save_path + '/model_saving/fire_nas_model.pth'
+labels_file = args.labels_file  # e.g., 'Data/archive/Frame_Pair_Labels.txt'
+base_dir = args.base_dir       # e.g., 'Data/archive/'
+BATCH_SIZE = 32
 
-# model_path = ""
-# architecture_path = ""
-# Load data
-print("Loading data...")
-if MODE == 'single':
-    model_save_dir = model_dir + '/single/nas_models/'
-    if not os.path.exists(model_save_dir):
-        os.makedirs(model_save_dir)
-    model_path = os.path.join(model_save_dir, 'proteinModelNAS_single.pth')
-    #'model_saving/single/nas_architectures/proteinArchitectureNAS_single.json'
-    architecture_path = model_dir + '/single/nas_architectures/'
-    architecture_path = os.path.join(architecture_path, 'proteinArchitectureNAS_single.json')
-    X_train_list, X_test_list, Y_train_list, Y_test_list = load_data_list_single()
-elif MODE == 'multi':
-    model_path_last = f'model_saving/multi/nas_models/'
-    if not os.path.exists(model_path_last):
-        os.makedirs(model_path_last)
-    model_path = os.path.join(model_path_last, 'proteinModelNAS_multi.pth')
+os.makedirs(save_path + '/model_saving', exist_ok=True)
 
-    architecture_path = 'model_saving/multi/nas_architectures/proteinArchitectureNAS_multi.json'
-    X_train_list, X_test_list, Y_train_list, Y_test_list = load_data_list_multi()
-else:
-    raise ValueError("Invalid mode. Please select either 'single' or 'multi'.")
+# Load architecture
+with open(arch_path, 'r') as f:
+    best_architecture = json.load(f)
 
-# Create validation split from training data
-# val_size = int(0.1 * len(X_train_list))
-# X_val = X_train_list[-val_size:]
-# Y_val = Y_train_list[-val_size:]
-# X_train = X_train_list[:-val_size]
-# Y_train = Y_train_list[:-val_size]
+# Get dataloaders
+train_loader, val_loader, test_loader = get_fire_dataloaders(
+    labels_file=labels_file,
+    base_dir=base_dir,
+    batch_size=BATCH_SIZE,
+    train_ratio=0.8,
+    val_ratio=0.1
+)
 
-print(f"Training samples: {len(X_train_list)}")
-print(f"Test samples: {len(X_test_list)}")
+# Merge train and val for full training
+from torch.utils.data import ConcatDataset, DataLoader
+full_train_dataset = ConcatDataset([train_loader.dataset, val_loader.dataset])
+full_train_loader = DataLoader(full_train_dataset, batch_size=BATCH_SIZE, shuffle=True, num_workers=4)
 
-# Train the best architecture for longer
-model = None
-best_architecture = load_architecture_from_file(architecture_path)
-print(f"Best architecture: {best_architecture}")
-if MODE == 'single':
+# Train the model from scratch on full training set
+device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+model = FlexibleFireCNN(best_architecture, num_classes=2).to(device)
+optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
+criterion = torch.nn.BCEWithLogitsLoss()
+EPOCHS = 10  # You can adjust
 
-    if TRAIN:
-        print("\nStarting extended training of best architecture...")
+for epoch in range(EPOCHS):
+    model.train()
+    total_loss = 0
+    for batch in full_train_loader:
+        rgb = batch['rgb'].to(device)
+        thermal = batch['thermal'].to(device)
+        labels = batch['labels'].to(device)
+        optimizer.zero_grad()
+        logits = model(rgb, thermal)
+        loss = criterion(logits, labels)
+        loss.backward()
+        optimizer.step()
+        total_loss += loss.item()
+    print(f"Epoch {epoch+1}/{EPOCHS}, Loss: {total_loss/len(full_train_loader):.4f}")
 
-        best_accuracy = train_best_architecture_single(
-            architecture=best_architecture,
-            X_train_list=X_train_list,
-            Y_train_list=Y_train_list,
-            model_path=model_path,
-            lr_value=0.1,
-            epochs=EPOCHS,
-            batch_size=BATCH_SIZE,
-            patience=15
-        )
-    model = SingleLabelCNN(best_architecture, num_classes=9, pretrained=PRETRAINED)
+# Save the retrained model
+torch.save(model.state_dict(), model_path)
 
-    search_space = SingleArchitectureSearchSpace()
-    nas_trainer = SingleLabelNASTrainer(search_space, None, model_path="", architecture_path="")
+# Evaluate on test set
+model.eval()
+all_fire_preds = []
+all_smoke_preds = []
+all_fire_labels = []
+all_smoke_labels = []
 
-    if EVAL:
-        # features, final_accuracy = nas_trainer.evaluate(model, X_test_list, Y_test_list, model_path)
+with torch.no_grad():
+    for batch in test_loader:
+        rgb_imgs = batch['rgb'].to(device)
+        thermal_imgs = batch['thermal'].to(device)
+        labels = batch['labels']
+        outputs = model(rgb_imgs, thermal_imgs)
+        preds = torch.sigmoid(outputs)
+        all_fire_preds.extend((preds[:, 0] > 0.5).cpu().numpy())
+        all_smoke_preds.extend((preds[:, 1] > 0.5).cpu().numpy())
+        all_fire_labels.extend(labels[:, 0].numpy())
+        all_smoke_labels.extend(labels[:, 1].numpy())
 
-        # evaluate_and_visualize_single(features, final_accuracy, model, X_test_list, Y_test_list, model_path, model_name='NAS_Single')
+fire_accuracy = sum(1 for p, l in zip(all_fire_preds, all_fire_labels) if p == l) / len(all_fire_preds)
+smoke_accuracy = sum(1 for p, l in zip(all_smoke_preds, all_smoke_labels) if p == l) / len(all_smoke_preds)
 
-        svm_scores, svm_acc = svm_classifier_single(model, X_test_list, Y_test_list, model_path, name='NAS_Single')
-        print(f"SVM Single Label Classification - Overall Accuracy: {svm_acc}")
+print(f"Test Fire Detection Accuracy: {fire_accuracy:.4f}")
+print(f"Test Smoke Detection Accuracy: {smoke_accuracy:.4f}")
 
-if MODE == 'multi':  
-
-    if TRAIN:  
-        print("\nStarting extended training of best architecture...")
-
-        best_accuracy = train_best_architecture_multi(
-            architecture=best_architecture,
-            X_train_list=X_train_list,
-            Y_train_list=Y_train_list,
-            lr_value=0.1,
-            model_path=model_path,
-            epochs=EPOCHS,
-            batch_size=BATCH_SIZE,
-            patience=15
-        )
-    model = FlexibleMultiLabelCNN(best_architecture, num_classes=9, pretrained=PRETRAINED)
-
-    search_space = MultiArchitectureSearchSpace()
-    nas_trainer = NASTrainer(search_space, None, model_path="", architecture_path="")
-
-    if EVAL:
-        svm_acc, class_acc = svm_classifier_multi(model, X_test_list, Y_test_list, test_batch_size=48, model_path=model_path, name='NAS_Multi')
-        print(f"SVM Multi Label Classification - Overall Accuracy: {svm_acc}")
-        print(f"Class-wise Accuracy: {class_acc}")
+# Visualize some predictions
+for batch in test_loader:
+    rgb_imgs = batch['rgb'].to(device)
+    thermal_imgs = batch['thermal'].to(device)
+    labels = batch['labels']
+    frame_numbers = batch['frame_number']
+    outputs = model(rgb_imgs, thermal_imgs)
+    preds = torch.sigmoid(outputs)
+    fig, axes = plt.subplots(5, 3, figsize=(15, 20))
+    for i in range(5):
+        if i >= len(rgb_imgs):
+            break
+        rgb_img = rgb_imgs[i].cpu().permute(1, 2, 0).numpy()
+        rgb_img = rgb_img * np.array([0.229, 0.224, 0.225]) + np.array([0.485, 0.456, 0.406])
+        rgb_img = np.clip(rgb_img, 0, 1)
+        thermal_img = thermal_imgs[i].cpu().squeeze().numpy()
+        true_fire = labels[i, 0].item()
+        true_smoke = labels[i, 1].item()
+        pred_fire = preds[i, 0].item()
+        pred_smoke = preds[i, 1].item()
+        axes[i, 0].imshow(rgb_img)
+        axes[i, 0].set_title(f"RGB - Frame {frame_numbers[i]}")
+        axes[i, 0].axis('off')
+        axes[i, 1].imshow(thermal_img, cmap='inferno')
+        axes[i, 1].set_title(f"Thermal - Frame {frame_numbers[i]}")
+        axes[i, 1].axis('off')
+        axes[i, 2].axis('off')
+        axes[i, 2].text(0.1, 0.7, f"True Fire: {true_fire:.0f}, Pred: {pred_fire:.2f}", fontsize=12)
+        axes[i, 2].text(0.1, 0.5, f"True Smoke: {true_smoke:.0f}, Pred: {pred_smoke:.2f}", fontsize=12)
+        fire_color = 'green' if (pred_fire > 0.5) == true_fire else 'red'
+        smoke_color = 'green' if (pred_smoke > 0.5) == true_smoke else 'red'
+        axes[i, 2].text(0.1, 0.3, f"Fire: {'Correct' if fire_color == 'green' else 'Incorrect'}", color=fire_color, fontsize=12)
+        axes[i, 2].text(0.1, 0.1, f"Smoke: {'Correct' if smoke_color == 'green' else 'Incorrect'}", color=smoke_color, fontsize=12)
+    plt.tight_layout()
+    plt.savefig('prediction_results.png')
+    plt.show()
+    break  # Just show one batch

@@ -1,6 +1,7 @@
 import os
 import argparse
 import torch
+import json
 from dataloading import get_fire_dataloaders
 from NAS_utils.multi.searchspace import FireArchitectureSearchSpace
 from NAS_utils.multi.controller import FireArchitectureController
@@ -45,3 +46,9 @@ trainer = FireNASTrainer(
 print("Starting NAS for fire detection...")
 best_model, best_architecture = trainer.train(train_loader, num_iterations=NUM_ITERATIONS)
 print("NAS completed. Best architecture:", best_architecture)
+
+# Save the best architecture as JSON for later evaluation
+arch_path = save_path + '/model_saving/' + 'fire_nas_architecture.json'
+with open(arch_path, 'w') as f:
+    json.dump(best_architecture, f)
+print(f"Best architecture saved to {arch_path}")
