@@ -6,6 +6,8 @@ import matplotlib.pyplot as plt
 from dataloading import get_fire_dataloaders
 from NAS_utils.multi.architecture import FlexibleFireCNN
 import argparse
+from sklearn.metrics import confusion_matrix, roc_curve, auc
+import seaborn as sns
 
 parser = argparse.ArgumentParser(description='Train fire detection model')
 parser.add_argument('--labels-file', type=str, required=True, help='Path to labels file')
@@ -94,6 +96,71 @@ smoke_accuracy = sum(1 for p, l in zip(all_smoke_preds, all_smoke_labels) if p =
 
 print(f"Test Fire Detection Accuracy: {fire_accuracy:.4f}")
 print(f"Test Smoke Detection Accuracy: {smoke_accuracy:.4f}")
+
+fire_cm = confusion_matrix(all_fire_labels, all_fire_preds)
+smoke_cm = confusion_matrix(all_smoke_labels, all_smoke_preds)
+
+plt.figure(figsize=(12, 5))
+plt.subplot(1, 2, 1)
+sns.heatmap(fire_cm, annot=True, fmt='d', cmap='Blues')
+plt.title('Fire Detection Confusion Matrix')
+plt.xlabel('Predicted')
+plt.ylabel('True')
+
+plt.subplot(1, 2, 2)
+sns.heatmap(smoke_cm, annot=True, fmt='d', cmap='Oranges')
+plt.title('Smoke Detection Confusion Matrix')
+plt.xlabel('Predicted')
+plt.ylabel('True')
+plt.tight_layout()
+plt.savefig('confusion_matrices.png')
+plt.show()
+
+# ROC Curves
+all_fire_probs = np.array(all_fire_preds)
+all_smoke_probs = np.array(all_smoke_preds)
+fpr_fire, tpr_fire, _ = roc_curve(all_fire_labels, all_fire_probs)
+fpr_smoke, tpr_smoke, _ = roc_curve(all_smoke_labels, all_smoke_probs)
+auc_fire = auc(fpr_fire, tpr_fire)
+auc_smoke = auc(fpr_smoke, tpr_smoke)
+
+plt.figure(figsize=(8, 6))
+plt.plot(fpr_fire, tpr_fire, label=f'Fire ROC (AUC = {auc_fire:.2f})')
+plt.plot(fpr_smoke, tpr_smoke, label=f'Smoke ROC (AUC = {auc_smoke:.2f})')
+plt.plot([0, 1], [0, 1], 'k--')
+plt.xlabel('False Positive Rate')
+plt.ylabel('True Positive Rate')
+plt.title('ROC Curves')
+plt.legend()
+plt.savefig('roc_curves.png')
+plt.show()
+
+# Class-wise Accuracy Bar Plot
+fire_tp = fire_cm[1, 1]
+fire_tn = fire_cm[0, 0]
+fire_fp = fire_cm[0, 1]
+fire_fn = fire_cm[1, 0]
+smoke_tp = smoke_cm[1, 1]
+smoke_tn = smoke_cm[0, 0]
+smoke_fp = smoke_cm[0, 1]
+smoke_fn = smoke_cm[1, 0]
+
+fire_sensitivity = fire_tp / (fire_tp + fire_fn) if (fire_tp + fire_fn) > 0 else 0
+fire_specificity = fire_tn / (fire_tn + fire_fp) if (fire_tn + fire_fp) > 0 else 0
+smoke_sensitivity = smoke_tp / (smoke_tp + smoke_fn) if (smoke_tp + smoke_fn) > 0 else 0
+smoke_specificity = smoke_tn / (smoke_tn + smoke_fp) if (smoke_tn + smoke_fp) > 0 else 0
+
+labels = ['Fire Sensitivity', 'Fire Specificity', 'Smoke Sensitivity', 'Smoke Specificity']
+values = [fire_sensitivity, fire_specificity, smoke_sensitivity, smoke_specificity]
+
+plt.figure(figsize=(8, 5))
+sns.barplot(x=labels, y=values, palette='viridis')
+plt.ylim(0, 1)
+plt.ylabel('Score')
+plt.title('Class-wise Sensitivity and Specificity')
+plt.savefig('classwise_accuracy.png')
+plt.show()
+
 
 # Visualize some predictions
 for batch in test_loader:
