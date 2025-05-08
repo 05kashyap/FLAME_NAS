@@ -1,5 +1,7 @@
 # FLAME_NAS
 
+This repository was made as a part of our Computer Vision Project.
+
 ## A) Description
 
 **FLAME_NAS** is a Neural Architecture Search (NAS) framework designed for automated architecture discovery in fire detection tasks using deep learning. The project leverages a controller-based NAS approach to search for optimal convolutional neural network architectures tailored for fire detection in images or video frames. It includes utilities for training, evaluation, and architecture search, making it easy to experiment with different datasets and configurations.
